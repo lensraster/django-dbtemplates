@@ -10,6 +10,7 @@ from django.db.models import signals
 from django.template import TemplateDoesNotExist
 from django.utils.translation import ugettext_lazy as _
 from django.utils.timezone import now
+from websites.models import Website
 
 
 class Template(models.Model):
@@ -29,6 +30,9 @@ class Template(models.Model):
 
     objects = models.Manager()
     on_site = CurrentSiteManager('sites')
+
+    website = models.ForeignKey(Website, related_name='templates', null=True)
+    is_default = models.BooleanField(default=False)
 
     class Meta:
         db_table = 'django_template'
@@ -59,6 +63,11 @@ class Template(models.Model):
         # populate the template instance with its content.
         if settings.DBTEMPLATES_AUTO_POPULATE_CONTENT and not self.content:
             self.populate()
+
+        if self.website and self.is_default:
+            # Set all other templates of the given website non-default
+            self.__class__.objects.filter(website=self.website).exclude(pk=self.pk).update(is_default=False)
+
         super(Template, self).save(*args, **kwargs)
 
 
